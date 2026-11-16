@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MNHS Daily Attendance Tracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #eef3f9;
+      font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 1.5rem;
+      color: #0b2b4a;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Background Watermark */
+    .watermark {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 85vw; max-width: 750px;
+      opacity: 0.06; 
+      z-index: 0;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .app-card {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      max-width: 1150px;
+      width: 100%;
+      border-radius: 28px;
+      box-shadow: 0 20px 50px -15px rgba(0, 30, 60, 0.25);
+      padding: 2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* HEADER UPDATES */
+    .school-header {
+      text-align: center;
+      border-bottom: 3px solid #1e5a8a;
+      padding-bottom: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .school-header h1 {
+      font-size: 1.8rem; font-weight: 700; color: #0b2b4a;
+      letter-spacing: 0.5px; text-transform: uppercase;
+    }
+    .school-header h2 {
+      font-size: 1.1rem; font-weight: 800; color: #8b0000; /* Dark Red */
+      margin-top: 6px; letter-spacing: 0.5px; text-transform: uppercase;
+    }
+    .school-header .sub {
+      font-size: 0.85rem; color: #5c7b96; margin-top: 6px; font-weight: 500;
+    }
+
+    .live-date {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: #eaf1f8; border: 1.5px solid #c8d9e9;
+      padding: 0.55rem 1.3rem; border-radius: 40px;
+      font-size: 0.95rem; font-weight: 700; color: #0b2b4a; margin-top: 0.85rem;
+    }
+    .live-date .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #0e6b3b; animation: pulse 1.8s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+    /* Time Window Banners */
+    .time-banner {
+      display: flex; flex-wrap: wrap; gap: 12px;
+      justify-content: center; margin-bottom: 1.5rem;
+    }
+    .time-chip {
+      background: #f0f5fa; border: 1px solid #d4e2ee;
+      padding: 0.6rem 1.2rem; border-radius: 40px;
+      font-size: 0.9rem; font-weight: 600;
+      display: flex; align-items: center; gap: 8px; color: #2e4e6c;
+    }
+    .time-chip.active { background: #e3f6e9; border-color: #9ad4ab; color: #0e6b3b; }
+    .time-chip.inactive { background: #fdf2f2; border-color: #f0c0c0; color: #b13a3a; }
+    .time-chip .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: currentColor; animation: pulse 1.8s infinite;
+    }
+
+    /* Instructions Box */
+    .instruction-box {
+      background: #e8f4fc; border-left: 5px solid #1e5a8a;
+      border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.5rem;
+      color: #13446b; font-size: 0.9rem; box-shadow: 0 2px 8px rgba(30, 90, 138, 0.05);
+    }
+    .instruction-box h4 { margin-bottom: 0.4rem; font-size: 0.95rem; display: flex; align-items: center; gap: 6px; }
+    .instruction-box ul { margin-left: 1.5rem; line-height: 1.6; }
+    .instruction-box li { margin-bottom: 4px; }
+    .instruction-box li:last-child { margin-bottom: 0; }
+
+    .form-card {
+      background: #f7fafd; border-radius: 20px; padding: 1.5rem;
+      margin-bottom: 1.75rem; border: 1px solid #e2eaf1;
+    }
+    .form-title {
+      font-size: 1rem; font-weight: 700; color: #0b2b4a; margin-bottom: 1rem;
+      display: flex; align-items: center; gap: 8px;
+    }
+    
+    /* FORM ROW UPDATES */
+    .form-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+    .input-group { flex: 1 1 120px; display: flex; flex-direction: column; gap: 5px; }
+    .input-group label {
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.04em; color: #3b5e7b;
+    }
+    .input-group input {
+      padding: 0.8rem 1rem; border: 1.5px solid #d7e0e8; border-radius: 12px;
+      font-size: 0.95rem; background: white; outline: none; font-family: inherit;
+      transition: 0.15s; width: 100%; text-transform: uppercase;
+    }
+    .input-group input:focus { border-color: #1e5a8a; box-shadow: 0 0 0 4px rgba(30, 90, 138, 0.12); }
+
+    .btn {
+      border: none; background: #1e5a8a; color: white; font-weight: 600;
+      padding: 0.8rem 1.5rem; border-radius: 12px; font-size: 0.95rem;
+      cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+      gap: 8px; transition: 0.15s; box-shadow: 0 4px 8px rgba(0, 40, 70, 0.1);
+      font-family: inherit;
+    }
+    .btn:hover:not(:disabled) { background: #13446b; transform: translateY(-1px); }
+    .btn:active:not(:disabled) { transform: translateY(1px); }
+    .btn:disabled { background: #a8bfd0; cursor: not-allowed; box-shadow: none; }
+    
+    .btn-login { background: #0e6b3b; }
+    .btn-login:hover:not(:disabled) { background: #0a542e; }
+    .btn-logout { background: #b1471e; }
+    .btn-logout:hover:not(:disabled) { background: #8a3616; }
+    .btn-secondary { background: white; color: #1e5a8a; border: 1.5px solid #cbdae6; box-shadow: none; }
+    .btn-secondary:hover:not(:disabled) { background: #f5faff; border-color: #1e5a8a; }
+    .btn-download { background: #0e6b3b; box-shadow: 0 4px 10px rgba(14, 107, 59, 0.25); }
+    .btn-download:hover:not(:disabled) { background: #0a542e; }
+
+    .msg { margin-top: 0.9rem; font-size: 0.9rem; font-weight: 600; min-height: 1.2rem; }
+    .msg.error { color: #b13a3a; }
+    .msg.success { color: #0e6b3b; }
+    .msg.info { color: #1e5a8a; }
+
+    .table-wrap {
+      border: 1px solid #e2eaf1; border-radius: 20px; overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02); margin-bottom: 1.25rem; background: white;
+    }
+    
+    /* TABLE UPDATES (Added Grade & Section columns) */
+    .table-header, .student-row {
+      display: grid; 
+      grid-template-columns: 40px 2fr 80px 1fr 80px 80px 100px;
+      align-items: center;
+    }
+    .table-header {
+      background: #f1f6fb; padding: 0.85rem 1rem; font-weight: 700;
+      font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;
+      color: #2e4e6c; border-bottom: 1px solid #d9e2ec;
+    }
+    .student-row {
+      padding: 0.8rem 1rem; border-bottom: 1px solid #edf2f7;
+      transition: background 0.1s; font-size: 0.85rem;
+    }
+    .student-row:last-child { border-bottom: none; }
+    .student-row:hover { background: #f9fcff; }
+
+    .student-name { font-weight: 600; color: #0d2f4b; display: flex; align-items: center; gap: 8px; }
+    .avatar {
+      width: 28px; height: 28px; background: #1e5a8a; color: white; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.75rem; text-transform: uppercase; flex-shrink: 0;
+    }
+    .badge {
+      display: inline-block; font-size: 0.7rem; font-weight: 700;
+      padding: 0.25rem 0.6rem; border-radius: 20px; letter-spacing: 0.02em; text-align: center;
+    }
+    .badge.present { background: #dff0e2; color: #0e6b3b; }
+    .badge.out { background: #fef0e2; color: #b1651e; }
+
+    .empty-state { padding: 2.5rem 1.5rem; text-align: center; color: #7a8f9f; font-size: 0.95rem; background: #fafdff; }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .stats {
+      display: flex; flex-wrap: wrap; gap: 1.5rem; font-size: 0.9rem;
+      color: #1e3d5c; background: #eaf1f8; padding: 0.7rem 1.4rem;
+      border-radius: 40px; font-weight: 500;
+    }
+    .stats b { color: #0b2b4a; }
+    .admin-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end; flex: 1; }
+
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(11, 43, 74, 0.55);
+      display: none; align-items: center; justify-content: center; padding: 1.5rem; z-index: 999;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal { background: white; border-radius: 20px; padding: 2rem; max-width: 420px; width: 100%; box-shadow: 0 25px 60px rgba(0, 20, 40, 0.35); }
+    .modal h3 { font-size: 1.15rem; margin-bottom: 0.5rem; color: #0b2b4a; }
+    .modal p { font-size: 0.85rem; color: #5c7b96; margin-bottom: 1.2rem; }
+    .modal input[type="password"], .modal input[type="date"] {
+      width: 100%; padding: 0.8rem 1rem; border: 1.5px solid #d7e0e8;
+      border-radius: 12px; font-size: 0.95rem; outline: none; font-family: inherit;
+      margin-bottom: 1rem; background: white; color: #0b2b4a;
+    }
+    .modal input:focus { border-color: #1e5a8a; box-shadow: 0 0 0 4px rgba(30, 90, 138, 0.12); }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .modal .msg { margin-top: 0; margin-bottom: 0.8rem; }
+
+    .footer-note {
+      font-size: 0.78rem; color: #7089a0; display: flex;
+      justify-content: space-between; flex-wrap: wrap; gap: 8px;
+      border-top: 1px solid #e2eaf1; padding-top: 1rem;
+    }
+
+    /* RESPONSIVE UPDATES */
+    @media (max-width: 850px) {
+      .app-card { padding: 1.25rem; }
+      .school-header h1 { font-size: 1.3rem; }
+      .school-header h2 { font-size: 0.95rem; }
+      .table-header, .student-row { grid-template-columns: 30px 1.5fr 60px 1fr 70px 70px 80px; padding: 0.7rem 0.5rem; font-size: 0.75rem; }
+      .avatar { display: none; } /* Hide avatar on smaller screens to save space */
+      .stats { width: 100%; }
+      .watermark { width: 120vw; max-width: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <img class="watermark" src="https://i.ibb.co/6PZ8Z6B/mnhs-logo.png" alt="School Logo">
+
+  <div class="app-card">
+    <div class="school-header">
+      <h1>Marigondon National High School</h1>
+      <h2>Daily Attendance Tracker</h2>
+      <div class="sub">Whole School Attendance System</div>
+      <div class="live-date">
+        <span class="dot"></span>
+        <span id="liveDateText">Loading date…</span>
+      </div>
+    </div>
+
+    <!-- LIVE TIME STATUS -->
+    <div class="time-banner">
+      <div class="time-chip" id="loginWindowChip">
+        <span class="dot"></span>
+        <span>Log-in: 7:00 AM – 8:00 AM</span>
+      </div>
+      <div class="time-chip" id="logoutWindowChip">
+        <span class="dot"></span>
+        <span>Log-out: 5:00 PM – 6:00 PM</span>
+      </div>
+      <div class="time-chip" style="background:#fff; border-color:#cbdae6;">
+        🕒 <span id="currentTimeText">--:--</span>
+      </div>
+    </div>
+
+    <div class="instruction-box">
+      <h4>📌 Quick Reminders</h4>
+      <ul>
+        <li><strong>Fill out in CAPITAL LETTERS.</strong> (The system will automatically format your input).</li>
+        <li><strong>Must encode the exact same data as the Log-In when you Log-Out.</strong></li>
+        <li><strong>For Section:</strong> Write the Grade Level in this format: 7, 8, 9, 10. Then the Section is just the <strong>LAST NAME of the adviser</strong>. (e.g., Grade: 8, Section: DELA CRUZ)</li>
+      </ul>
+    </div>
+
+    <div class="form-card">
+      <div class="form-title">👤 Student Attendance</div>
+      <div class="form-row">
+        <!-- Name Fields -->
+        <div class="input-group" style="flex: 2 1 150px;">
+          <label>Last Name</label>
+          <input type="text" id="lastName" placeholder="DELA CRUZ" autocomplete="off">
+        </div>
+        <div class="input-group" style="flex: 2 1 150px;">
+          <label>First Name</label>
+          <input type="text" id="firstName" placeholder="JUAN" autocomplete="off">
+        </div>
+        <div class="input-group" style="flex: 0 1 80px;">
+          <label>M.I.</label>
+          <input type="text" id="middleInitial" placeholder="A" maxlength="2" autocomplete="off">
+        </div>
+        
+        <!-- Grade & Section Fields -->
+        <div class="input-group" style="flex: 0 1 90px;">
+          <label>Grade Lvl</label>
+          <input type="text" id="gradeLevel" placeholder="7" maxlength="2" autocomplete="off">
+        </div>
+        <div class="input-group" style="flex: 1 1 150px;">
+          <label>Section (Adviser)</label>
+          <input type="text" id="section" placeholder="DELA CRUZ" autocomplete="off">
+        </div>
+
+        <!-- Buttons -->
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-left:auto;">
+          <button class="btn btn-login" id="loginBtn">✅ Log In</button>
+          <button class="btn btn-logout" id="logoutBtn">🚪 Log Out</button>
+          <button class="btn btn-secondary" id="clearBtn">Clear</button>
+        </div>
+      </div>
+      <div class="msg" id="message"></div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-header">
+        <div>#</div>
+        <div>Student Name</div>
+        <div>Grade</div>
+        <div>Section</div>
+        <div>Log-in</div>
+        <div>Log-out</div>
+        <div>Status</div>
+      </div>
+      <div id="attendanceListContainer"></div>
+    </div>
+
+    <div class="actions">
+      <div class="stats">
+        <div>✅ Present: <b id="presentCount">0</b></div>
+        <div>🚪 Logged Out: <b id="outCount">0</b></div>
+        <div>👥 Total: <b id="totalCount">0</b></div>
+      </div>
+      <div class="admin-row">
+        <button class="btn btn-download" id="downloadBtn">⬇ Download Excel (Admin)</button>
+      </div>
+    </div>
+
+    <div class="footer-note">
+      <span>Attendance is saved locally on this device.</span>
+      <span id="lastUpdated"></span>
+    </div>
+  </div>
+
+  <!-- ADMIN MODAL -->
+  <div class="modal-overlay" id="adminModal">
+    <div class="modal">
+      <h3>🔒 Admin Access</h3>
+      <p>Enter password and select the date you want to download.</p>
+      
+      <label style="font-size: 0.8rem; font-weight: bold; color: #1e5a8a; margin-bottom: 4px; display: block;">Select Date:</label>
+      <input type="date" id="downloadDateInput">
+      
+      <label style="font-size: 0.8rem; font-weight: bold; color: #1e5a8a; margin-bottom: 4px; display: block;">Password:</label>
+      <input type="password" id="adminPassword" placeholder="Admin password" autocomplete="off">
+      
+      <div class="msg error" id="modalMsg"></div>
+      
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="cancelModalBtn">Cancel</button>
+        <button class="btn btn-download" id="confirmDownloadBtn">Download</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const ADMIN_PASSWORD = 'mnhs-admin';   // 🔑 Change this password!
+      const STORAGE_KEY = 'mnhs_attendance_whole_school_v1';
+
+      // ⏰ TIME RESTRICTIONS (24-hour format)
+      const LOGIN_START  = 7;   
+      const LOGIN_END    = 8;   
+      const LOGOUT_START = 17;  
+      const LOGOUT_END   = 18;  
+
+      let records = [];
+      let currentDate = new Date().toLocaleDateString('en-CA');
+
+      const $ = (id) => document.getElementById(id);
+      const lastNameInput = $('lastName');
+      const firstNameInput = $('firstName');
+      const middleInitialInput = $('middleInitial');
+      const gradeLevelInput = $('gradeLevel');
+      const sectionInput = $('section');
+      
+      const loginBtn = $('loginBtn');
+      const logoutBtn = $('logoutBtn');
+      const clearBtn = $('clearBtn');
+      const messageEl = $('message');
+      const listContainer = $('attendanceListContainer');
+      const presentCountEl = $('presentCount');
+      const outCountEl = $('outCount');
+      const totalCountEl = $('totalCount');
+      const lastUpdatedEl = $('lastUpdated');
+      const downloadBtn = $('downloadBtn');
+      const liveDateText = $('liveDateText');
+      const loginWindowChip = $('loginWindowChip');
+      const logoutWindowChip = $('logoutWindowChip');
+      const currentTimeText = $('currentTimeText');
+
+      const adminModal = $('adminModal');
+      const adminPasswordInput = $('adminPassword');
+      const downloadDateInput = $('downloadDateInput');
+      const modalMsg = $('modalMsg');
+      const confirmDownloadBtn = $('confirmDownloadBtn');
+      const cancelModalBtn = $('cancelModalBtn');
+
+      // ==========================================
+      // TIME & DATE HELPERS
+      // ==========================================
+      function todayStr() {
+        return new Date().toLocaleDateString('en-CA');
+      }
+
+      function nowHourFloat() {
+        const d = new Date();
+        return d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
+      }
+
+      function inLoginWindow() {
+        const h = nowHourFloat();
+        return h >= LOGIN_START && h < LOGIN_END;
+      }
+
+      function inLogoutWindow() {
+        const h = nowHourFloat();
+        return h >= LOGOUT_START && h < LOGOUT_END;
+      }
+
+      function prettyDateFromString(dateStr) {
+        if (!dateStr) return '';
+        const [y, m, d] = dateStr.split('-');
+        const dateObj = new Date(y, m - 1, d);
+        return dateObj.toLocaleDateString('en-US', {
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+      }
+
+      function prettyDate() {
+        return prettyDateFromString(currentDate);
+      }
+
+      function formatTime(iso) {
+        if (!iso) return '—';
+        return new Date(iso).toLocaleTimeString('en-US', {
+          hour: '2-digit', minute: '2-digit'
+        });
+      }
+
+      // UPDATED KEY: Includes grade and section so students with same names don't clash
+      function makeKey(last, first, mi, grade, section) {
+        return (last + '|' + first + '|' + mi + '|' + grade + '|' + section).toLowerCase().trim();
+      }
+
+      function escapeHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+      }
+
+      function setMessage(text, type = 'info') {
+        messageEl.textContent = text;
+        messageEl.className = 'msg ' + type;
+        if (text) {
+          clearTimeout(setMessage._t);
+          setMessage._t = setTimeout(() => {
+            messageEl.textContent = '';
+            messageEl.className = 'msg';
+          }, 4500);
+        }
+      }
+
+      // ==========================================
+      // DATA & STORAGE
+      // ==========================================
+      function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }
+      function load() {
+        try { records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+        catch { records = []; }
+      }
+      
+      function getRecordsByDate(dateStr) {
+        return records.filter(r => r.date === dateStr);
+      }
+
+      // ==========================================
+      // RENDER
+      // ==========================================
+      function render() {
+        const list = getRecordsByDate(currentDate).slice().sort((a, b) =>
+          new Date(a.loginTime || 0) - new Date(b.loginTime || 0)
+        );
+
+        if (list.length === 0) {
+          listContainer.innerHTML = `<div class="empty-state">No students have logged in yet today.</div>`;
+        } else {
+          listContainer.innerHTML = list.map((r, i) => {
+            const initial = (r.lastName || '?').charAt(0).toUpperCase();
+            const status = r.logoutTime
+              ? '<span class="badge out">Logged Out</span>'
+              : '<span class="badge present">Present</span>';
+            return `
+              <div class="student-row">
+                <div>${i + 1}</div>
+                <div class="student-name">
+                  <span class="avatar">${escapeHtml(initial)}</span>
+                  ${escapeHtml(r.fullName)}
+                </div>
+                <div style="font-weight:bold; color:#1e5a8a;">${escapeHtml(r.gradeLevel)}</div>
+                <div>${escapeHtml(r.section)}</div>
+                <div style="font-size:0.8rem;color:#385d7a;">${formatTime(r.loginTime)}</div>
+                <div style="font-size:0.8rem;color:#385d7a;">${formatTime(r.logoutTime)}</div>
+                <div>${status}</div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        const present = list.filter(r => !r.logoutTime).length;
+        const out = list.filter(r => r.logoutTime).length;
+        presentCountEl.textContent = present;
+        outCountEl.textContent = out;
+        totalCountEl.textContent = list.length;
+
+        lastUpdatedEl.textContent = 'Updated: ' + new Date().toLocaleTimeString([], {
+          hour: '2-digit', minute: '2-digit'
+        });
+
+        updateWindowChips();
+      }
+
+      // ==========================================
+      // TIME WINDOWS & UI UPDATES
+      // ==========================================
+      function updateWindowChips() {
+        const loginActive = inLoginWindow();
+        const logoutActive = inLogoutWindow();
+
+        loginWindowChip.classList.toggle('active', loginActive);
+        loginWindowChip.classList.toggle('inactive', !loginActive);
+        
+        logoutWindowChip.classList.toggle('active', logoutActive);
+        logoutWindowChip.classList.toggle('inactive', !logoutActive);
+
+        loginBtn.disabled = !loginActive;
+        logoutBtn.disabled = !logoutActive;
+      }
+
+      // ==========================================
+      // STUDENT ACTIONS
+      // ==========================================
+      function readFormFields() {
+        const last = lastNameInput.value.trim().toUpperCase();
+        const first = firstNameInput.value.trim().toUpperCase();
+        const mi = middleInitialInput.value.trim().toUpperCase();
+        const grade = gradeLevelInput.value.trim().toUpperCase();
+        const section = sectionInput.value.trim().toUpperCase();
+        
+        if (!last || !first) {
+          setMessage('Please enter both Last Name and First Name.', 'error');
+          return null;
+        }
+        if (!grade || !section) {
+          setMessage('Please enter your Grade Level and Section.', 'error');
+          return null;
+        }
+        
+        // Format Name
+        const miPart = mi ? ' ' + mi.replace(/[^A-Z]/g, '').charAt(0) + '.' : '';
+        const fullName = `${last}, ${first}${miPart}`;
+
+        return { last, first, mi, grade, section, fullName };
+      }
+
+      function handleLogin() {
+        if (!inLoginWindow()) {
+          setMessage('⏰ Log-in is only allowed from 7:00 AM to 8:00 AM.', 'error');
+          return;
+        }
+
+        const n = readFormFields();
+        if (!n) return;
+
+        const key = makeKey(n.last, n.first, n.mi, n.grade, n.section);
+        const existing = getRecordsByDate(currentDate).find(r => r.key === key);
+        if (existing) {
+          setMessage(`"${n.fullName}" (Grade ${n.grade} - ${n.section}) already logged in today.`, 'error');
+          return;
+        }
+
+        const now = new Date();
+        records.push({
+          id: Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+          key,
+          lastName: n.last,
+          firstName: n.first,
+          middleInitial: n.mi,
+          gradeLevel: n.grade,
+          section: n.section,
+          fullName: n.fullName,
+          date: currentDate,
+          loginTime: now.toISOString(),
+          logoutTime: null
+        });
+        save();
+        render();
+        clearInputs();
+        setMessage(`✅ ${n.fullName} logged in successfully!`, 'success');
+      }
+
+      function handleLogout() {
+        if (!inLogoutWindow()) {
+          setMessage('⏰ Log-out is only allowed from 5:00 PM to 6:00 PM.', 'error');
+          return;
+        }
+
+        const n = readFormFields();
+        if (!n) return;
+
+        const key = makeKey(n.last, n.first, n.mi, n.grade, n.section);
+        const rec = getRecordsByDate(currentDate).find(r => r.key === key);
+        
+        if (!rec) {
+          setMessage(`No record found for "${n.fullName}" in Grade ${n.grade} - ${n.section}. Make sure all details match your log-in exactly.`, 'error');
+          return;
+        }
+        if (rec.logoutTime) {
+          setMessage(`"${rec.fullName}" already logged out today.`, 'error');
+          return;
+        }
+
+        rec.logoutTime = new Date().toISOString();
+        save();
+        render();
+        clearInputs();
+        setMessage(`🚪 ${rec.fullName} logged out successfully!`, 'success');
+      }
+
+      function clearInputs() {
+        lastNameInput.value = '';
+        firstNameInput.value = '';
+        middleInitialInput.value = '';
+        gradeLevelInput.value = '';
+        sectionInput.value = '';
+        lastNameInput.focus();
+      }
+
+      // ==========================================
+      // ADMIN DOWNLOAD
+      // ==========================================
+      function openAdminModal() {
+        downloadDateInput.value = currentDate;
+        adminPasswordInput.value = '';
+        modalMsg.textContent = '';
+        adminModal.classList.add('show');
+        setTimeout(() => adminPasswordInput.focus(), 100);
+      }
+      
+      function closeAdminModal() { 
+        adminModal.classList.remove('show'); 
+      }
+      
+      function confirmDownload() {
+        if (adminPasswordInput.value !== ADMIN_PASSWORD) {
+          modalMsg.textContent = '❌ Incorrect password.';
+          return;
+        }
+        
+        const selectedDate = downloadDateInput.value;
+        if (!selectedDate) {
+          modalMsg.textContent = '❌ Please select a date.';
+          return;
+        }
+
+        const listToDownload = getRecordsByDate(selectedDate);
+        if (listToDownload.length === 0) {
+          modalMsg.textContent = `❌ No attendance records found for ${selectedDate}.`;
+          return;
+        }
+
+        closeAdminModal();
+        downloadExcel(selectedDate, listToDownload);
+      }
+
+      function downloadExcel(dateStr, list) {
+        list.sort((a, b) => new Date(a.loginTime || 0) - new Date(b.loginTime || 0));
+        const prettyDateStr = prettyDateFromString(dateStr);
+
+        // UPDATED EXCEL EXPORT: Includes Grade and Section
+        const rows = list.map((r, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${escapeHtml(r.lastName)}</td>
+            <td>${escapeHtml(r.firstName)}</td>
+            <td>${escapeHtml(r.middleInitial || '')}</td>
+            <td>${escapeHtml(r.gradeLevel)}</td>
+            <td>${escapeHtml(r.section)}</td>
+            <td>${escapeHtml(r.fullName)}</td>
+            <td>${formatTime(r.loginTime)}</td>
+            <td>${formatTime(r.logoutTime)}</td>
+            <td>${r.logoutTime ? 'Logged Out' : 'Present'}</td>
+          </tr>
+        `).join('');
+
+        const html = `
+          <html xmlns:o="urn:schemas-microsoft-com:office:office"
+                xmlns:x="urn:schemas-microsoft-com:office:excel"
+                xmlns="http://www.w3.org/TR/REC-html40">
+          <head><meta charset="UTF-8">
+            <!--[if gte mso 9]>
+            <xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+              <x:Name>Attendance</x:Name>
+              <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+            </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml>
+            <![endif]-->
+          </head>
+          <body>
+            <table border="1">
+              <thead>
+                <tr><th colspan="10" style="font-size:16px;font-weight:bold;text-align:center;">
+                  Marigondon National High School
+                </th></tr>
+                <tr><th colspan="10" style="font-size:13px;text-align:center;color:#8b0000;">
+                  DAILY ATTENDANCE TRACKER — ${prettyDateStr}
+                </th></tr>
+                <tr style="background:#1e5a8a;color:#ffffff;font-weight:bold;">
+                  <th>#</th><th>Last Name</th><th>First Name</th><th>M.I.</th>
+                  <th>Grade</th><th>Section</th><th>Full Name</th>
+                  <th>Log-in</th><th>Log-out</th><th>Status</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </body></html>`;
+
+        const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `MNHS_WholeSchool_Attendance_${dateStr}.xls`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      // ==========================================
+      // SYSTEM TICK (Clock, Date Rollover, & Time Windows)
+      // ==========================================
+      function tick() {
+        const pretty = prettyDate();
+        if (liveDateText.textContent !== pretty) {
+          liveDateText.textContent = pretty;
+        }
+
+        const now = new Date();
+        currentTimeText.textContent = now.toLocaleTimeString('en-US', {
+          hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+
+        const t = todayStr();
+        if (t !== currentDate) {
+          currentDate = t;
+          render();
+        }
+        
+        updateWindowChips();
+      }
+
+      function init() {
+        currentDate = todayStr();
+        load();
+        render();
+        tick();
+        setInterval(tick, 1000);
+        lastNameInput.focus();
+      }
+
+      // ==========================================
+      // EVENT LISTENERS
+      // ==========================================
+      loginBtn.addEventListener('click', handleLogin);
+      logoutBtn.addEventListener('click', handleLogout);
+      clearBtn.addEventListener('click', () => { clearInputs(); setMessage(''); });
+
+      // Allow pressing Enter to submit
+      [lastNameInput, firstNameInput, middleInitialInput, gradeLevelInput, sectionInput].forEach(inp => {
+        inp.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { 
+            e.preventDefault(); 
+            if (inLoginWindow()) handleLogin();
+            else if (inLogoutWindow()) handleLogout();
+            else setMessage('Attendance window is currently closed.', 'error');
+          }
+        });
+      });
+
+      downloadBtn.addEventListener('click', openAdminModal);
+      cancelModalBtn.addEventListener('click', closeAdminModal);
+      confirmDownloadBtn.addEventListener('click', confirmDownload);
+      adminPasswordInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') confirmDownload();
+      });
+      adminModal.addEventListener('click', (e) => {
+        if (e.target === adminModal) closeAdminModal();
+      });
+
+      init();
+    })();
+  </script>
+</body>
+</html>
